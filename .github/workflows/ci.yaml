@@ -6,14 +6,25 @@ on:
 
 jobs:
   build:
-    name: Build app and tests
+    name: Build ${{ matrix.board }} (${{ matrix.app.conf_name }})
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04]
-        board: [nrf52840dk/nrf52840]
-        app: [../zephyr/samples/bluetooth/hci_usb]
-    runs-on: ${{ matrix.os }}
+        board:
+          - nrf52840dk/nrf52840
+          - nrf54l15dk/nrf54l15/cpuapp
+        app:
+          - path: ../zephyr/samples/bluetooth/hci_usb
+            conf_name: default
+            cmake_extra_args: ""
+          - path: ../zephyr/samples/bluetooth/hci_usb
+            conf_name: usbd_next
+            cmake_extra_args: "-DCONF_FILE=usbd_next_prj.conf"
+          - path: ../zephyr/samples/bluetooth/hci_usb
+            conf_name: ACL_502
+            cmake_extra_args: "-DEXTRA_CONF_FILE=hci_usb/ACL_502.conf"
+
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6
         with:
@@ -28,15 +39,16 @@ jobs:
         with:
           app-path: working_directory
           toolchains: arm-zephyr-eabi
-          ccache-cache-key: ${{ matrix.os }}-${{ matrix.board }}-${{ matrix.app }}-ccache
+          ccache-cache-key: ${{ matrix.board }}-${{ matrix.app.conf_name }}-ccache
 
       - working-directory: working_directory
-        run: west build -b ${{ matrix.board }} ${{ matrix.app }}
+        run: west build -b ${{ matrix.board }} ${{ matrix.app.path }} -- ${{ matrix.app.cmake_extra_args }}
 
       - run: |
           zephyr_version=$(west list zephyr --format='{revision}')
-          app_name=$(basename "${{ matrix.app }}")
-          fw_name="zephyr_${app_name}_${zephyr_version}_${{ matrix.board }}.hex"
+          board_slug=$(echo "${{ matrix.board }}" | tr '/' '_')
+          app_name=$(basename "${{ matrix.app.path }}")
+          fw_name="zephyr_${app_name}_${{ matrix.app.conf_name }}_${zephyr_version}_${board_slug}.hex"
           cp build/zephyr/zephyr.hex "build/${fw_name}"
           echo "name=${fw_name}" >> "$GITHUB_OUTPUT"
         id: fw
