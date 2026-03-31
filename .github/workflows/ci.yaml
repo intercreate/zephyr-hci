@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    name: Build app and tests
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04]
+        board: [nrf52840dk/nrf52840]
+        app: [../samples/bluetooth/hci_usb]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          path: working_directory
+          persist-credentials: false
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: 3.14
+
+      - uses: zephyrproject-rtos/action-zephyr-setup@v1
+        with:
+          app-path: working_directory
+          toolchains: arm-zephyr-eabi
+          ccache-cache-key: ${{ matrix.os }}-${{ matrix.board }}-${{ matrix.app }}-ccache
+
+      - working-directory: working_directory
+        run: west build -b ${{ matrix.board }} ${{ matrix.app }}
+
+      - run: |
+          zephyr_version=$(west list zephyr --format='{revision}')
+          app_name=$(basename "${{ matrix.app }}")
+          fw_name="zephyr_${app_name}_${zephyr_version}_${{ matrix.board }}.hex"
+          cp build/zephyr/zephyr.hex "build/${fw_name}"
+          echo "name=${fw_name}" >> "$GITHUB_OUTPUT"
+        id: fw
+        working-directory: working_directory
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.fw.outputs.name }}
+          path: working_directory/build/${{ steps.fw.outputs.name }}
+          archive: false
