@@ -46,7 +46,7 @@ jobs:
             board_name: nrf5340dk
             path: ../zephyr/samples/bluetooth/hci_usb
             conf_name: ACL_502
-            cmake_extra_args: "-DEXTRA_CONF_FILE=$PWD/hci_usb/ACL_502.conf -Dhci_ipc_EXTRA_CONF_FILE=$PWD/hci_usb/ACL_502_netcore.conf"
+            cmake_extra_args: "-DEXTRA_CONF_FILE=$PWD/hci_usb/ACL_502_host.conf -Dhci_ipc_EXTRA_CONF_FILE=$PWD/hci_usb/ACL_502_netcore.conf"
             sysbuild: true
             hex_file: merged.hex
 
