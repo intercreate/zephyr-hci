@@ -16,19 +16,19 @@ jobs:
             conf_name: default
             cmake_extra_args: ""
             sysbuild: false
-            hex_file: zephyr.hex
+            hex_file: zephyr/zephyr.hex
           - board: nrf52840dk/nrf52840
             path: ../zephyr/samples/bluetooth/hci_usb
             conf_name: usbd_next
             cmake_extra_args: "-DCONF_FILE=usbd_next_prj.conf"
             sysbuild: false
-            hex_file: zephyr.hex
+            hex_file: zephyr/zephyr.hex
           - board: nrf52840dk/nrf52840
             path: ../zephyr/samples/bluetooth/hci_usb
             conf_name: ACL_502
             cmake_extra_args: "-DEXTRA_CONF_FILE=$PWD/hci_usb/ACL_502.conf"
             sysbuild: false
-            hex_file: zephyr.hex
+            hex_file: zephyr/zephyr.hex
           - board: nrf5340dk/nrf5340/cpuapp
             path: ../zephyr/samples/bluetooth/hci_usb
             conf_name: default
@@ -59,10 +59,8 @@ jobs:
           toolchains: arm-zephyr-eabi
           ccache-cache-key: ${{ matrix.config.board }}-${{ matrix.config.conf_name }}-ccache
 
-      - if: matrix.config.sysbuild
-        working-directory: working_directory
-        run: |
-          echo "SB_CONFIG_NETCORE_HCI_IPC=y" > ${{ matrix.config.path }}/sysbuild.conf
+      - working-directory: working_directory
+        run: ./setup.sh
 
       - working-directory: working_directory
         run: >-
@@ -70,12 +68,24 @@ jobs:
           ${{ matrix.config.sysbuild && '--sysbuild' || '' }}
           -- ${{ matrix.config.cmake_extra_args }}
 
+      - name: >-
+          Merge hex files (workaround for
+          https://github.com/zephyrproject-rtos/zephyr/discussions/102647,
+          https://github.com/zephyrproject-rtos/zephyr/pull/83085)
+        if: matrix.config.sysbuild
+        working-directory: working_directory
+        run: >-
+          python ../zephyr/scripts/build/mergehex.py
+          build/hci_usb/zephyr/zephyr.hex
+          build/hci_ipc/zephyr/zephyr.hex
+          -o build/merged.hex
+
       - run: |
           zephyr_version=$(west list zephyr --format='{revision}')
           board_slug=$(echo "${{ matrix.config.board }}" | tr '/' '_')
           app_name=$(basename "${{ matrix.config.path }}")
           fw_name="zephyr_${app_name}_${{ matrix.config.conf_name }}_${zephyr_version}_${board_slug}.hex"
-          cp "build/zephyr/${{ matrix.config.hex_file }}" "build/${fw_name}"
+          cp "build/${{ matrix.config.hex_file }}" "build/${fw_name}"
           echo "name=${fw_name}" >> "$GITHUB_OUTPUT"
         id: fw
         working-directory: working_directory

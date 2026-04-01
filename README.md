@@ -15,6 +15,9 @@ CI build repository for assorted Zephyr HCI firmware.
    pipx install west
    west init -l .
    west update
+   python -m venv ../.venv
+   source ../.venv/bin/activate
+   pip install -r ../zephyr/scripts/requirements.txt
    west packages pip --install
    west sdk install -t arm-zephyr-eabi
    ```
