@@ -4,6 +4,9 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     name: Build ${{ matrix.config.board_name }} (${{ matrix.config.conf_name }})
@@ -99,3 +102,23 @@ jobs:
           name: ${{ steps.fw.outputs.name }}
           path: working_directory/build/${{ steps.fw.outputs.name }}
           archive: false
+
+  release:
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/download-artifact@v8
+        with:
+          path: artifacts
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Latest Builds
+          body: Built from ${{ github.sha }}
+          make_latest: true
+          target_commitish: ${{ github.sha }}
+          files: artifacts/**/*.hex
