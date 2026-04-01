@@ -114,6 +114,10 @@ jobs:
         with:
           path: artifacts
 
+      - run: gh release delete latest --cleanup-tag -y || true
+        env:
+          GH_TOKEN: ${{ github.token }}
+
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: latest
